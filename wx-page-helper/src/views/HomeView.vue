@@ -7,6 +7,14 @@ const store = useWxContentStore()
 const handleCollect = () => {
   store.fetchContent(store.url)
 }
+
+const handleDownloadText = async () => {
+  try {
+    await store.downloadText()
+  } catch (error) {
+    console.error('下载文本失败:', error)
+  }
+}
 </script>
 
 <template>
@@ -65,9 +73,13 @@ const handleCollect = () => {
         </div>
 
         <div class="download-section" v-if="store.isComplete">
-          <button @click="store.downloadText" class="download-button">
+          <button 
+            @click="handleDownloadText" 
+            class="download-button"
+            :disabled="store.isProcessing"
+          >
             <span class="download-icon">📄</span>
-            下载文字内容
+            {{ store.isProcessing ? '下载中...' : '下载文字内容' }}
           </button>
           <button @click="store.downloadImages" class="download-button">
             <span class="download-icon">🖼️</span>
@@ -77,7 +89,7 @@ const handleCollect = () => {
       </div>
 
       <!-- <div class="example-section" v-if="!store.images.length">
-        <h3>��例图片</h3>
+        <h3>例图片</h3>
         <div class="image-grid">
           <div class="image-item" v-for="n in 4" :key="n">
             <img :src="`/examples/example${n}.jpg`" :alt="`示例 ${n}`">

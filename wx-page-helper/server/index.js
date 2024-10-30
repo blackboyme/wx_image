@@ -37,10 +37,90 @@ app.post('/api/extract', async (req, res) => {
     const response = await axios.get(url)
     const $ = cheerio.load(response.data)
     
-    // 提取文章内容（根据实际微信文章HTML结构调整选择器）
-    const content = $('#js_content').text().trim()
+    // 提取文章标题
+    const title = $('#activity-name').text().trim()
     
-    res.json({ content })
+    // 提取并格式化文章内容
+    const paragraphs = []
+    
+    // 遍历所有可能包含文本的元素
+    $('#js_content > *').each((i, elem) => {
+      // 跳过空元素和装饰性元素
+      if ($(elem).is('br') || $(elem).is('hr')) return
+      
+      const $elem = $(elem)
+      let text = $elem.text().trim()
+      
+      if (text) {
+        // 获取元素的样式
+        const style = $elem.attr('style') || ''
+        const fontSize = style.match(/font-size:\s*(\d+)px/) 
+          ? parseInt(style.match(/font-size:\s*(\d+)px/)[1])
+          : 16
+        
+        // 判断是否是标题
+        const isHeading = fontSize > 16 || $elem.is('h1,h2,h3,h4,h5,h6')
+        
+        // 处理长段落，每80个字符添加换行
+        if (text.length > 80) {
+          let formattedText = ''
+          let currentLine = ''
+          let words = text.split('')
+          
+          for (let char of words) {
+            currentLine += char
+            if (currentLine.length >= 80) {
+              formattedText += currentLine + '\n'
+              currentLine = ''
+            }
+          }
+          if (currentLine) {
+            formattedText += currentLine
+          }
+          text = formattedText
+        }
+
+        // 根据元素类型添加适当的格式
+        if (isHeading) {
+          paragraphs.push('\n' + text + '\n')
+        } else if ($elem.is('p')) {
+          paragraphs.push(text + '\n\n')
+        } else if ($elem.is('li')) {
+          paragraphs.push('• ' + text + '\n')
+        } else {
+          paragraphs.push(text + '\n')
+        }
+      }
+    })
+
+    // 合并所有段落并添加标题
+    const formattedContent = [
+      title ? `${title}\n\n` : '',
+      ...paragraphs
+    ].join('')
+
+    // 创建临时文件夹
+    await ensureTempDir()
+    
+    // 创建文本文件
+    const docPath = path.join(TEMP_DIR, `article-${Date.now()}.txt`)
+    
+    // 写入文件，使用 UTF-8 编码
+    await fs.writeFile(docPath, formattedContent, 'utf8')
+    
+    // 发送文件
+    res.download(docPath, `${title || 'article'}.txt`, async (err) => {
+      if (err) {
+        console.error('发送文件失败:', err)
+      }
+      
+      // 清理临时文件
+      try {
+        await fs.unlink(docPath)
+      } catch (error) {
+        console.error('清理临时文件失败:', error)
+      }
+    })
   } catch (error) {
     console.error('提取内容失败:', error)
     res.status(500).json({ error: '内容提取失败' })
