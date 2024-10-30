@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000
 app.use(cors())
 app.use(express.json())
 
-// 服务静态文件
+// 修改静态文件服务的路径
 app.use(express.static(path.join(__dirname, '../dist')))
 
 // 创建临时文件夹用于存储下载的图片

@@ -15,6 +15,13 @@
   </nav>
 </template>
 
+<script setup>
+// 直接使用相对路径导入
+import logo from '../assets/logo.svg'
+// 或者确保使用正确的别名路径
+// import logo from '@/assets/logo.svg'
+</script>
+
 <style scoped>
 .navbar {
   background: white;

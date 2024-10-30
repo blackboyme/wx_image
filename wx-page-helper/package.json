@@ -7,9 +7,9 @@
     "dev:backend": "nodemon server/index.js",
     "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
     "build": "vite build",
-    "preview": "vite preview",
     "start": "node server/index.js",
-    "deploy": "npm run build && node server/index.js"
+    "deploy": "npm run clean && npm run build && npm run start",
+    "clean": "rm -rf dist && rm -rf server/temp/*"
   },
   "dependencies": {
     "archiver": "^5.3.1",
