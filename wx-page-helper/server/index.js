@@ -54,14 +54,67 @@ app.post('/api/images', async (req, res) => {
     const response = await axios.get(url)
     const $ = cheerio.load(response.data)
     
-    // 提取所有图片URL（根据实际微信文章HTML结构调整选择器）
-    const images = []
+    // 创建一个Set来存储唯一的图片URL
+    const imageSet = new Set()
+    
+    // 1. 提取所有常规图片
     $('#js_content img').each((i, elem) => {
       const imgUrl = $(elem).attr('data-src') || $(elem).attr('src')
       if (imgUrl) {
-        images.push(imgUrl)
+        imageSet.add(imgUrl)
       }
     })
+    
+    // 2. 提取SVG标签中的图片
+    $('#js_content svg image').each((i, elem) => {
+      const imgUrl = $(elem).attr('xlink:href') || $(elem).attr('href')
+      if (imgUrl) {
+        imageSet.add(imgUrl)
+      }
+    })
+
+    // 3. 提取SVG的背景图片
+    $('#js_content svg').each((i, elem) => {
+      const style = $(elem).attr('style')
+      if (style) {
+        const match = style.match(/url\(['"]?(.*?)['"]?\)/)
+        if (match && match[1]) {
+          imageSet.add(match[1])
+        }
+      }
+    })
+
+    // 4. 96编辑器特定结构
+    $('#js_content section svg image, .rich_pages svg image').each((i, elem) => {
+      const imgUrl = $(elem).attr('xlink:href') || $(elem).attr('href')
+      if (imgUrl) {
+        imageSet.add(imgUrl)
+      }
+    })
+
+    // 5. 检查使用foreignObject的SVG
+    $('foreignObject img').each((i, elem) => {
+      const imgUrl = $(elem).attr('data-src') || $(elem).attr('src')
+      if (imgUrl) {
+        imageSet.add(imgUrl)
+      }
+    })
+
+    // 添加调试输出
+    console.log('Found SVG elements:', $('#js_content svg').length)
+    console.log('Found SVG images:', $('#js_content svg image').length)
+    
+    // 过滤掉无效的URL
+    const images = Array.from(imageSet).filter(url => {
+      return url && 
+             url.startsWith('http') && 
+             !url.includes('blank.gif') &&
+             !url.includes('icon') &&
+             !url.includes('logo')
+    })
+    
+    // 输出找到的图片数量
+    console.log('Total unique images found:', images.length)
     
     res.json({ images })
   } catch (error) {
